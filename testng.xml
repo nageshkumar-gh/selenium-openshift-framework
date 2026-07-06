@@ -1,0 +1,42 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.1.dtd" >
+<suite name="Cucumber TestNG Suite" data-provider-thread-count="10">
+    <listeners>
+        <listener class-name="listeners.AnnotationTransformer"/>
+    </listeners>
+    <!--
+        Cross-browser: uncomment the blocks below to run Firefox/Edge/Safari too. Each block runs
+        the same runner.TestRunner against one browser via the "browser" parameter (read in
+        TestRunner.configureBrowser()). Blocks must run sequentially (no parallel="tests") because
+        browser selection is a JVM-wide system property set per block - concurrent blocks would
+        race on it. Scenarios within a single block still run in parallel via data-provider-thread-count.
+        Safari must stay last and sets headless=false (it has no headless mode), since that
+        override would otherwise leak into whichever block ran after it.
+    -->
+    <test name="Chrome">
+        <parameter name="browser" value="chrome"/>
+        <classes>
+            <class name="runner.TestRunner"/>
+        </classes>
+    </test>
+    <!--
+    <test name="Firefox">
+        <parameter name="browser" value="firefox"/>
+        <classes>
+            <class name="runner.TestRunner"/>
+        </classes>
+    </test>
+    <test name="Edge">
+        <parameter name="browser" value="edge"/>
+        <classes>
+            <class name="runner.TestRunner"/>
+        </classes>
+    </test>
+    <test name="Safari">
+        <parameter name="browser" value="safari"/>
+        <parameter name="headless" value="false"/>
+        <classes>
+            <class name="runner.TestRunner"/>
+        </classes>
+    </test>
+    -->
+</suite>
