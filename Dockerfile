@@ -30,8 +30,9 @@ RUN mvn -B dependency:go-offline
 
 COPY testng.xml .
 COPY src ./src
-RUN chgrp -R 0 /workspace && chmod -R g=u /workspace
+COPY entrypoint.sh .
+RUN chgrp -R 0 /workspace && chmod -R g=u /workspace && chmod +x entrypoint.sh
 
-# -Dbrowser=chrome/-Dheadless=true override config.properties regardless of its current values,
-# since a container has no display server and this image only installs Chrome.
-ENTRYPOINT ["mvn", "-B", "test", "-Dbrowser=chrome", "-Dheadless=true"]
+# entrypoint.sh reads $THREAD_COUNT (Job env var) and patches testng.xml's
+# data-provider-thread-count at container startup, so tuning parallelism doesn't need a rebuild.
+ENTRYPOINT ["./entrypoint.sh"]
