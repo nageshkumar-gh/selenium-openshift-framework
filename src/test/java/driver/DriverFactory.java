@@ -45,6 +45,12 @@ public class DriverFactory {
                     // window().maximize() has no real screen to size against in headless mode and
                     // silently falls back to a small default, so fix the viewport explicitly instead.
                     chromeOptions.addArguments("--window-size=1920,1080");
+                    // Chrome's own internal sandbox needs user-namespace privileges that a
+                    // restricted-SCC container (running as an arbitrary non-root UID) doesn't have,
+                    // so it fails to start unless sandboxing is disabled. /dev/shm is also tiny by
+                    // default in containers, which crashes Chrome under load unless disabled.
+                    chromeOptions.addArguments("--no-sandbox");
+                    chromeOptions.addArguments("--disable-dev-shm-usage");
                 }
                 driver = new ChromeDriver(chromeOptions);
                 break;

@@ -16,12 +16,21 @@ RUN apt-get update \
 
 WORKDIR /workspace
 
+# OpenShift's default SCC runs this container as an arbitrary, random non-root UID with no
+# /etc/passwd entry, so $HOME resolves to empty/"/" and Maven fails trying to create
+# $HOME/.m2/repository (i.e. literally "/.m2/repository", which isn't writable). Point HOME at a
+# directory we own instead, and make it group-writable: whatever UID OpenShift assigns always
+# belongs to group 0, so chmod g=u lets that arbitrary UID create/write .m2 here at runtime.
+ENV HOME=/workspace
+RUN chgrp -R 0 /workspace && chmod -R g=u /workspace
+
 # Copy just the POM first so dependency resolution is cached in its own layer.
 COPY pom.xml .
 RUN mvn -B dependency:go-offline
 
 COPY testng.xml .
 COPY src ./src
+RUN chgrp -R 0 /workspace && chmod -R g=u /workspace
 
 # -Dbrowser=chrome/-Dheadless=true override config.properties regardless of its current values,
 # since a container has no display server and this image only installs Chrome.
