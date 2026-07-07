@@ -38,19 +38,18 @@ jobs:
       - name: Run tests as a new Job
         run: oc apply -f openshift/job.yaml
 
-      - name: Wait for the Job's pod to start
+      # "Pending" counts as a non-empty phase, so a one-shot phase check isn't enough - the
+      # container can still be ContainerCreating when oc logs -f is first attempted. Retry the
+      # logs command itself until the container is actually up and streaming.
+      - name: Stream test logs
         run: |
           for i in $(seq 1 30); do
-            phase=$(oc get pods -l job-name=selenium-test-run -o jsonpath='{.items[0].status.phase}' 2>/dev/null || true)
-            if [ -n "$phase" ]; then
-              echo "Pod phase: $phase"
+            if oc logs -f job/selenium-test-run; then
               break
             fi
+            echo "Container not ready yet, retrying in 5s..."
             sleep 5
           done
-
-      - name: Stream test logs
-        run: oc logs -f job/selenium-test-run
 
       # oc logs -f exits once the container finishes either way, so explicitly check the Job's
       # own completion condition to make this workflow step fail on test failures too.
