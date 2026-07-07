@@ -1,4 +1,4 @@
-name: Run Selenium Tests on OpenShift
+name: OpenShift CI Pipeline
 
 on:
   push:
@@ -50,6 +50,27 @@ jobs:
             echo "Container not ready yet, retrying in 5s..."
             sleep 5
           done
+
+      # Cucumber/Surefire reports and screenshots only exist inside this Job's pod filesystem,
+      # which disappears once the pod is cleaned up - copy them out while the pod still exists,
+      # regardless of whether the tests passed or failed (arguably more useful on failure).
+      - name: Copy test reports out of the pod
+        if: always()
+        run: |
+          POD=$(oc get pods -l job-name=selenium-test-run -o jsonpath='{.items[0].metadata.name}')
+          oc cp "$POD":/workspace/target ./target --retries=3 || echo "Could not copy reports - pod may already be gone"
+
+      - name: Upload test reports as a workflow artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cucumber-test-reports
+          path: |
+            target/surefire-reports
+            target/cucumber.json
+            target/cucumber-reports
+            target/screenshots
+          if-no-files-found: warn
 
       # oc wait --for=condition=complete only recognizes the Complete condition - if the Job
       # instead fails (Failed=True, Complete never becomes true), it has no early-exit signal and
