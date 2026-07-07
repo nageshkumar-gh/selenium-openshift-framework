@@ -53,5 +53,22 @@ jobs:
 
       # oc logs -f exits once the container finishes either way, so explicitly check the Job's
       # own completion condition to make this workflow step fail on test failures too.
-      - name: Fail the workflow if the test Job didn't succeed
-        run: oc wait --for=condition=complete job/selenium-test-run --timeout=600s
+      - name: Wait for the Job to reach a final state
+        run: oc wait --for=condition=complete job/selenium-test-run --timeout=600s || true
+
+      # Runs regardless of whether the wait above passed or failed, so there's always a clear,
+      # human-readable pass/fail summary on this run's Summary page instead of digging through logs.
+      - name: Report final Job status
+        if: always()
+        run: |
+          COMPLETE=$(oc get job selenium-test-run -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}')
+          FAILED=$(oc get job selenium-test-run -o jsonpath='{.status.conditions[?(@.type=="Failed")].status}')
+          if [ "$COMPLETE" = "True" ]; then
+            echo "### ✅ Selenium tests passed on OpenShift" >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$FAILED" = "True" ]; then
+            echo "### ❌ Selenium tests failed on OpenShift" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          else
+            echo "### ⚠️ Job status unknown - it may still be running" >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
