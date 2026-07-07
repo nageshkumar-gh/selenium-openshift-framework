@@ -1,4 +1,4 @@
-name: CI
+name: GHA CI Pipeline
 
 on:
   push:
