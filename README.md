@@ -1,4 +1,4 @@
-# BDD Selenium Framework
+# BDD Selenium OpenShift
 
 ![CI](https://github.com/nageshkumar-gh/bdd-selenium-framework/actions/workflows/ci.yml/badge.svg?style=flat-square)
 
