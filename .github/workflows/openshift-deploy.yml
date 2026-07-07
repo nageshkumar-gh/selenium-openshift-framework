@@ -1,0 +1,52 @@
+name: Run Selenium Tests on OpenShift
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to OpenShift
+        uses: redhat-actions/oc-login@v1
+        with:
+          openshift_server_url: ${{ secrets.OPENSHIFT_SERVER }}
+          openshift_token: ${{ secrets.OPENSHIFT_TOKEN }}
+          insecure_skip_tls_verify: true
+          namespace: ${{ secrets.OPENSHIFT_NAMESPACE }}
+
+      # BuildConfig already points at this GitHub repo, so this just tells OpenShift to pull
+      # and rebuild from the commit that triggered this workflow - same as `oc start-build`
+      # done manually so far.
+      - name: Trigger OpenShift build
+        run: oc start-build selenium-tests --follow
+
+      # Job's pod template is immutable, so a fresh run always needs delete-then-apply.
+      - name: Remove previous test Job
+        run: oc delete job selenium-test-run --ignore-not-found=true
+
+      - name: Run tests as a new Job
+        run: oc apply -f openshift/job.yaml
+
+      - name: Wait for the Job's pod to start
+        run: |
+          for i in $(seq 1 30); do
+            phase=$(oc get pods -l job-name=selenium-test-run -o jsonpath='{.items[0].status.phase}' 2>/dev/null || true)
+            if [ -n "$phase" ]; then
+              echo "Pod phase: $phase"
+              break
+            fi
+            sleep 5
+          done
+
+      - name: Stream test logs
+        run: oc logs -f job/selenium-test-run
+
+      # oc logs -f exits once the container finishes either way, so explicitly check the Job's
+      # own completion condition to make this workflow step fail on test failures too.
+      - name: Fail the workflow if the test Job didn't succeed
+        run: oc wait --for=condition=complete job/selenium-test-run --timeout=600s

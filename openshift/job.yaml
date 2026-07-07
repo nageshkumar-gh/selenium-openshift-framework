@@ -1,0 +1,28 @@
+# Runs the Selenium/Cucumber/TestNG suite as a one-shot OpenShift Job.
+# THREAD_COUNT is read by entrypoint.sh at container startup and patched into testng.xml, so
+# tuning parallelism only needs a new Job (delete + reapply), not an image rebuild.
+# Memory/CPU below are sized for 8 concurrent headless Chrome instances plus JVM/Maven overhead.
+# Project quota (`oc describe quota`) caps NotTerminating pods at 30Gi/3 CPU-request cores total,
+# so this leaves generous headroom for other pods in the project.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: selenium-test-run
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: selenium-test-run
+          image: image-registry.openshift-image-registry.svc:5000/nageshkumar-ie-dev/selenium-tests:latest
+          env:
+            - name: THREAD_COUNT
+              value: "8"
+          resources:
+            requests:
+              cpu: "1"
+              memory: "2Gi"
+            limits:
+              cpu: "3"
+              memory: "6Gi"
