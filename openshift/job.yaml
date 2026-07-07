@@ -9,7 +9,11 @@ kind: Job
 metadata:
   name: selenium-test-run
 spec:
-  backoffLimit: 2
+  # 0, not the default 6: a failing scenario will fail identically on a full-suite rerun, so
+  # retrying the whole Job just wastes CI time. Per-scenario flakiness is already handled by
+  # TestNG's own RetryAnalyzer (see retry.count in config.properties), which is the right layer
+  # for that - Job-level retries are for transient infra failures (evicted pod, node failure).
+  backoffLimit: 0
   template:
     spec:
       restartPolicy: Never
