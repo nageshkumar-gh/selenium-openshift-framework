@@ -51,24 +51,24 @@ jobs:
             sleep 5
           done
 
-      # oc logs -f exits once the container finishes either way, so explicitly check the Job's
-      # own completion condition to make this workflow step fail on test failures too.
-      - name: Wait for the Job to reach a final state
-        run: oc wait --for=condition=complete job/selenium-test-run --timeout=600s || true
-
-      # Runs regardless of whether the wait above passed or failed, so there's always a clear,
-      # human-readable pass/fail summary on this run's Summary page instead of digging through logs.
+      # oc wait --for=condition=complete only recognizes the Complete condition - if the Job
+      # instead fails (Failed=True, Complete never becomes true), it has no early-exit signal and
+      # just blocks for the full --timeout before reporting a timeout error. Polling both
+      # conditions ourselves lets this exit the moment either one resolves, instead of always
+      # waiting out the worst case.
       - name: Report final Job status
-        if: always()
         run: |
-          COMPLETE=$(oc get job selenium-test-run -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}')
-          FAILED=$(oc get job selenium-test-run -o jsonpath='{.status.conditions[?(@.type=="Failed")].status}')
-          if [ "$COMPLETE" = "True" ]; then
-            echo "### ✅ Selenium tests passed on OpenShift" >> "$GITHUB_STEP_SUMMARY"
-          elif [ "$FAILED" = "True" ]; then
-            echo "### ❌ Selenium tests failed on OpenShift" >> "$GITHUB_STEP_SUMMARY"
-            exit 1
-          else
-            echo "### ⚠️ Job status unknown - it may still be running" >> "$GITHUB_STEP_SUMMARY"
-            exit 1
-          fi
+          for i in $(seq 1 60); do
+            COMPLETE=$(oc get job selenium-test-run -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}')
+            FAILED=$(oc get job selenium-test-run -o jsonpath='{.status.conditions[?(@.type=="Failed")].status}')
+            if [ "$COMPLETE" = "True" ]; then
+              echo "### Selenium tests passed on OpenShift" >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            elif [ "$FAILED" = "True" ]; then
+              echo "### Selenium tests failed on OpenShift" >> "$GITHUB_STEP_SUMMARY"
+              exit 1
+            fi
+            sleep 10
+          done
+          echo "### Job status unknown - did not reach a final state within 10 minutes" >> "$GITHUB_STEP_SUMMARY"
+          exit 1
