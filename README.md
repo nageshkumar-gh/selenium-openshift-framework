@@ -322,7 +322,7 @@ oc describe quota
 4. Deletes the previous Job, applies `openshift/job.yaml`
 5. Streams live test output into the workflow log (retrying until the container is actually running, not just scheduled)
 6. Copies `target/` (Cucumber/Surefire reports, screenshots) out of the pod and uploads it as a downloadable **workflow artifact**
-7. Polls the Job's `Complete`/`Failed` condition directly and writes a clear ✅/❌ summary to the run's Summary page
+7. Polls the Job's `Complete`/`Failed` condition directly and writes a clear / summary to the run's Summary page
 
 ### Required GitHub secrets
 
